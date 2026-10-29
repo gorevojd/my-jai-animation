@@ -9,3 +9,5 @@ using Math;
 
 #scope_export
 #load "skeleton.jai";
+#load "clip.jai";
+#load "player.jai";
