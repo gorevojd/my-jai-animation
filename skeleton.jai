@@ -49,7 +49,7 @@ Skeleton :: struct {
     default_pose: Pose;
 
     root_joint_index: u8 = INVALID_JOINT_INDEX;
-    joint_mapping: Name_Table(u8);
+    joint_mapping: Name_Table(u8); // id -> index in joints array
 }
 
 set_joint_transform :: (pose: *Pose, joint_index: u32, transform: Transform) #no_abc {
@@ -185,7 +185,7 @@ lerp_barycentric_poses_internal :: (p0: *Pose, p1: Pose, p2: Pose, t0: float, t1
         move_poses(p0, p1);
         return;
     }
-    
+
     if t0 == 0.0 && t1 == 0.0 {
         move_poses(p0, p2);
         return;
