@@ -29,7 +29,7 @@ Player :: struct {
 }
 
 // Always restarts; reverse playback begins at the final sample. Use unpause to resume.
-play :: (player: *Player, clip: *Clip) {
+play :: (player: *Player, clip: Clip) {
     Basic.assert(Math.is_finite(player.speed));
     player.time = ifx player.speed < 0.0 then clip_duration(clip) else 0.0;
     player.state = .Playing;
@@ -71,7 +71,7 @@ get_player_pose :: (player: *Player, binding: *Binding) -> *Pose {
         player.cached_clip != binding.clip ||
         player.cached_skeleton != binding.skeleton)
     {
-        sample_animation(binding, player.time, *player.cached_pose);
+        sample_animation(binding.*, player.time, *player.cached_pose);
         player.cached_time = player.time;
         player.cached_binding = binding;
         player.cached_clip = binding.clip;
@@ -83,7 +83,7 @@ get_player_pose :: (player: *Player, binding: *Binding) -> *Pose {
 }
 
 // Negative speed supports reverse playback. Once stops at the endpoint reached in that direction.
-advance_animation :: (player: *Player, clip: *Clip, delta_time: float) {
+advance_animation :: (player: *Player, clip: Clip, delta_time: float) {
     Basic.assert(Math.is_finite(delta_time) && delta_time >= 0.0);
     Basic.assert(Math.is_finite(player.time) && Math.is_finite(player.speed));
 

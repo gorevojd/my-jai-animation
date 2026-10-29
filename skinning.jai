@@ -1,6 +1,6 @@
 // A skin palette maps mesh-local vertices into skeleton/model space.
 // inverse_bind_matrices[i] maps mesh-local bind positions into joint-local bind space.
-// Output matrix i = current global joint matrix * inverse bind i. Do not apply the mesh node again.
+// Output matrix i = current model-space joint matrix * inverse bind i. Do not apply the mesh node again.
 // The skeleton is borrowed. This binding owns its arrays; free with their original allocator.
 MAX_SKIN_PALETTE_JOINTS :: 256;
 
@@ -16,10 +16,8 @@ free_skin_binding :: (skin: *SkinBinding) {
     skin.* = .{};
 }
 
-build_joint_matrices :: (skeleton: *Skeleton, pose: *Pose, matrices: []Math.Mat4) -> bool {
-    if (skeleton == null ||
-        pose == null ||
-        skeleton.num_joints > MAX_JOINT_COUNT ||
+build_joint_matrices :: (skeleton: Skeleton, pose: Pose, matrices: []Math.Mat4) -> bool {
+    if (skeleton.num_joints > MAX_JOINT_COUNT ||
         pose.num_joints != skeleton.num_joints ||
         matrices.count != skeleton.num_joints)
     {
@@ -27,7 +25,7 @@ build_joint_matrices :: (skeleton: *Skeleton, pose: *Pose, matrices: []Math.Mat4
         return false;
     }
 
-    globals: [MAX_JOINT_COUNT]Math.Transform;
+    model_space: [MAX_JOINT_COUNT]Math.Transform;
     result: [MAX_JOINT_COUNT]Math.Mat4;
 
     for i: 0..cast(int) skeleton.num_joints - 1 {
@@ -40,11 +38,11 @@ build_joint_matrices :: (skeleton: *Skeleton, pose: *Pose, matrices: []Math.Mat4
                 return false;
             }
 
-            local = Math.multiply(globals[parent], local);
+            local = Math.multiply(model_space[parent], local);
         }
 
         local.rotation = Math.normalize_safe(local.rotation);
-        globals[i] = local;
+        model_space[i] = local;
         result[i] = Math.to_matrix(local);
     }
 
@@ -55,9 +53,8 @@ build_joint_matrices :: (skeleton: *Skeleton, pose: *Pose, matrices: []Math.Mat4
     return true;
 }
 
-build_skin_matrices :: (skin: *SkinBinding, pose: *Pose, matrices: []Math.Mat4) -> bool {
-    if (skin == null ||
-        skin.skeleton == null ||
+build_skin_matrices :: (skin: SkinBinding, pose: Pose, matrices: []Math.Mat4) -> bool {
+    if (skin.skeleton == null ||
         skin.joint_indices.count > MAX_SKIN_PALETTE_JOINTS ||
         skin.joint_indices.count != skin.inverse_bind_matrices.count ||
         matrices.count != skin.joint_indices.count)
@@ -71,8 +68,8 @@ build_skin_matrices :: (skin: *SkinBinding, pose: *Pose, matrices: []Math.Mat4) 
         return false;
     }
 
-    globals: [MAX_JOINT_COUNT]Math.Mat4;
-    if !build_joint_matrices(skin.skeleton, pose, .{skin.skeleton.num_joints, globals.data}) {
+    model_space: [MAX_JOINT_COUNT]Math.Mat4;
+    if !build_joint_matrices(skin.skeleton.*, pose, .{skin.skeleton.num_joints, model_space.data}) {
         return false;
     }
 
@@ -83,7 +80,7 @@ build_skin_matrices :: (skin: *SkinBinding, pose: *Pose, matrices: []Math.Mat4) 
             return false;
         }
 
-        result[palette_index] = globals[joint] * skin.inverse_bind_matrices[palette_index];
+        result[palette_index] = model_space[joint] * skin.inverse_bind_matrices[palette_index];
     }
 
     for *matrix, i: matrices {
@@ -93,8 +90,7 @@ build_skin_matrices :: (skin: *SkinBinding, pose: *Pose, matrices: []Math.Mat4) 
     return true;
 }
 
-apply_pose_to_mesh :: (dst: *$T/interface AnimatedGeometryInterface, src: T, skin: *SkinBinding, pose: Pose) {
-    Basic.assert(skin != null, "CPU skinning requires a skin binding.");
+apply_pose_to_mesh :: (dst: *$T/interface AnimatedGeometryInterface, src: T, skin: SkinBinding, pose: Pose) {
     Basic.assert(dst.vertices.count == src.vertices.count, "CPU skinning source and destination vertex counts differ.");
     Basic.assert(src.joint_palette_indices.count == src.vertices.count && src.weights.count == src.vertices.count,
                  "CPU skinning requires palette indices and weights for every vertex.");
@@ -102,7 +98,7 @@ apply_pose_to_mesh :: (dst: *$T/interface AnimatedGeometryInterface, src: T, ski
     palette: [MAX_SKIN_PALETTE_JOINTS]Math.Mat4;
     Basic.assert(skin.joint_indices.count <= palette.count, "Skin palette exceeds CPU skinning scratch storage.");
 
-    valid := build_skin_matrices(skin, *pose, .{skin.joint_indices.count, palette.data});
+    valid := build_skin_matrices(skin, pose, .{skin.joint_indices.count, palette.data});
     if valid {
         for source, i: src.vertices {
             position: Math.Vec3;

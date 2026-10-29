@@ -36,15 +36,15 @@ Binding :: struct {
     num_tracks: int;
 }
 
-clip_duration :: (clip: *Clip) -> float {
+clip_duration :: (clip: Clip) -> float {
     Basic.assert(clip.num_samples > 0 && Math.is_finite(clip.sample_rate) && clip.sample_rate > 0.0);
     return cast(float) (clip.num_samples - 1) / clip.sample_rate;
 }
 
 // Always validates metadata and channel sizes. Loaders pass true to also check every key value.
 // Full checks require finite values and normalized, nonzero quaternions. Binding uses false.
-validate_clip :: (clip: *Clip, full_check: bool) -> bool {
-    if (clip == null || clip.num_samples == 0 || !Math.is_finite(clip.sample_rate) ||
+validate_clip :: (clip: Clip, full_check: bool) -> bool {
+    if (clip.num_samples == 0 || !Math.is_finite(clip.sample_rate) ||
         clip.sample_rate <= 0.0 || clip.tracks.count > MAX_JOINT_COUNT) {
         return false;
     }
@@ -84,7 +84,6 @@ validate_clip :: (clip: *Clip, full_check: bool) -> bool {
     return true;
 }
 
-// Missing/duplicate targets fail atomically: the previous binding remains unchanged.
 bind_animation :: (clip: *Clip, skeleton: *Skeleton, binding: *Binding) -> bool {
     if clip == null {
         Basic.assert(false, "Cannot bind animation: clip is null.");
@@ -101,7 +100,7 @@ bind_animation :: (clip: *Clip, skeleton: *Skeleton, binding: *Binding) -> bool 
         return false;
     }
 
-    if !validate_clip(clip, false) {
+    if !validate_clip(clip.*, false) {
         Basic.assert(false, "Cannot bind animation '%': invalid clip metadata or channel sizes.", clip.name.text);
         return false;
     }
@@ -149,14 +148,13 @@ bind_animation :: (clip: *Clip, skeleton: *Skeleton, binding: *Binding) -> bool 
     return true;
 }
 
-// Time is clamped to clip endpoints. Loop wrapping belongs to Player, not to sampling.
-sample_animation :: (binding: *Binding, time: float, result: *Pose) {
+sample_animation :: (binding: Binding, time: float, result: *Pose) {
     Basic.assert(binding.clip != null && binding.skeleton != null && Math.is_finite(time));
 
     clip := binding.clip;
     Basic.assert(binding.num_tracks == clip.tracks.count);
 
-    position := Basic.clamp(time, 0.0, clip_duration(clip)) * clip.sample_rate;
+    position := Basic.clamp(time, 0.0, clip_duration(clip.*)) * clip.sample_rate;
     position = Basic.min(position, cast(float) (clip.num_samples - 1));
 
     // Float rounding can put a large endpoint just beyond the final integer sample index.
