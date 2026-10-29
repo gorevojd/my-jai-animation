@@ -3,9 +3,6 @@
 // 2) Every weight must be nonnegative.
 // 3) For a vertex with any nonzero weight, abs(sum(weights) - 1.0) must be <= 0.0001.
 //    Four zero weights are allowed: skinning preserves that vertex's source position.
-// apply_pose_to_mesh assumes these conditions and does not validate or normalize weights.
-
-// Intern names while loading; Name storage is shared and must not be freed by skeleton owners.
 
 INVALID_JOINT_INDEX :: 255;
 MAX_JOINT_COUNT :: 128;
