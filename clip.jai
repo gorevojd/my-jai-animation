@@ -15,8 +15,8 @@ KeyFloat :: KeyTemplate(float);
 KeyVec3 :: KeyTemplate(Math.Vec3);
 KeyQuat :: KeyTemplate(Math.Quat);
 
-BoneTrack :: struct {
-    bone: Name;
+JointTrack :: struct {
+    joint: Name;
     positions: [..]KeyVec3;
     rotations: [..]KeyQuat;
     scales: [..]KeyFloat;
@@ -26,13 +26,13 @@ Clip :: struct {
     name: Name;
     sample_rate: float = 30.0;
     num_samples: u32;
-    tracks: [..]BoneTrack;
+    tracks: [..]JointTrack;
 }
 
 Binding :: struct {
     clip: *Clip;
     skeleton: *Skeleton;
-    bone_indices: [MAX_BONE_COUNT]u8;
+    track_index_to_joint_index: [MAX_JOINT_COUNT]u8;
     num_tracks: int;
 }
 
@@ -44,8 +44,8 @@ clip_duration :: (clip: *Clip) -> float {
 // Always validates metadata and channel sizes. Loaders pass true to also check every key value.
 // Full checks require finite values and normalized, nonzero quaternions. Binding uses false.
 validate_clip :: (clip: *Clip, full_check: bool) -> bool {
-    if (!clip || clip.num_samples == 0 || !Math.is_finite(clip.sample_rate) ||
-        clip.sample_rate <= 0.0 || clip.tracks.count > MAX_BONE_COUNT) {
+    if (clip == null || clip.num_samples == 0 || !Math.is_finite(clip.sample_rate) ||
+        clip.sample_rate <= 0.0 || clip.tracks.count > MAX_JOINT_COUNT) {
         return false;
     }
 
@@ -60,26 +60,24 @@ validate_clip :: (clip: *Clip, full_check: bool) -> bool {
             return false;
         }
 
-        if !full_check {
-            continue;
-        }
-
-        for key: track.positions {
-            if !Math.is_finite(key.value.x) || !Math.is_finite(key.value.y) || !Math.is_finite(key.value.z) {
-                return false;
+        if full_check {
+            for key: track.positions {
+                if !Math.is_finite(key.value.x) || !Math.is_finite(key.value.y) || !Math.is_finite(key.value.z) {
+                    return false;
+                }
             }
-        }
 
-        for key: track.rotations {
-            norm := Math.dot(key.value, key.value);
-            if !Math.is_finite(norm) || Math.abs(norm - 1.0) > 0.0001 {
-                return false;
+            for key: track.rotations {
+                norm := Math.dot(key.value, key.value);
+                if !Math.is_finite(norm) || Math.abs(norm - 1.0) > 0.0001 {
+                    return false;
+                }
             }
-        }
 
-        for key: track.scales {
-            if !Math.is_finite(key.value) {
-                return false;
+            for key: track.scales {
+                if !Math.is_finite(key.value) {
+                    return false;
+                }
             }
         }
     }
@@ -88,30 +86,34 @@ validate_clip :: (clip: *Clip, full_check: bool) -> bool {
 
 // Missing/duplicate targets fail atomically: the previous binding remains unchanged.
 bind_animation :: (clip: *Clip, skeleton: *Skeleton, binding: *Binding) -> bool {
-    if !clip {
+    if clip == null {
         Basic.assert(false, "Cannot bind animation: clip is null.");
         return false;
     }
-    if !skeleton {
+
+    if skeleton == null {
         Basic.assert(false, "Cannot bind animation: skeleton is null.");
         return false;
     }
-    if !binding {
+
+    if binding == null {
         Basic.assert(false, "Cannot bind animation: output binding is null.");
         return false;
     }
+
     if !validate_clip(clip, false) {
         Basic.assert(false, "Cannot bind animation '%': invalid clip metadata or channel sizes.", clip.name.text);
         return false;
     }
 
-    if skeleton.num_bones > MAX_BONE_COUNT {
-        Basic.assert(false, "Cannot bind animation: skeleton has % bones, maximum is %.", skeleton.num_bones, MAX_BONE_COUNT);
+    if skeleton.num_joints > MAX_JOINT_COUNT {
+        Basic.assert(false, "Cannot bind animation: skeleton has % joints, maximum is %.", skeleton.num_joints, MAX_JOINT_COUNT);
         return false;
     }
-    if skeleton.default_pose.num_bones != skeleton.num_bones {
-        Basic.assert(false, "Cannot bind animation: default pose has % bones, skeleton has %.",
-                     skeleton.default_pose.num_bones, skeleton.num_bones);
+
+    if skeleton.default_pose.num_joints != skeleton.num_joints {
+        Basic.assert(false, "Cannot bind animation: default pose has % joints, skeleton has %.",
+                     skeleton.default_pose.num_joints, skeleton.num_joints);
         return false;
     }
 
@@ -119,25 +121,28 @@ bind_animation :: (clip: *Clip, skeleton: *Skeleton, binding: *Binding) -> bool 
     result.clip = clip;
     result.skeleton = skeleton;
     result.num_tracks = clip.tracks.count;
-    used: [MAX_BONE_COUNT]bool;
+    used: [MAX_JOINT_COUNT]bool;
+
     for track, index: clip.tracks {
-        found, bone := ClipTables.table_find(*skeleton.bone_mapping.table, track.bone);
+        found, joint := ClipTables.table_find(*skeleton.joint_mapping.table, track.joint);
         if !found {
-            Basic.assert(false, "Cannot bind animation: track % targets missing bone '%'.", index, track.bone.text);
+            Basic.assert(false, "Cannot bind animation: track % targets missing joint '%'.", index, track.joint.text);
             return false;
         }
-        if bone >= skeleton.num_bones {
-            Basic.assert(false, "Cannot bind animation: bone '%' maps to index %, skeleton has % bones.",
-                         track.bone.text, bone, skeleton.num_bones);
+
+        if joint >= skeleton.num_joints {
+            Basic.assert(false, "Cannot bind animation: joint '%' maps to index %, skeleton has % joints.",
+                         track.joint.text, joint, skeleton.num_joints);
             return false;
         }
-        
-        if used[bone] {
-            Basic.assert(false, "Cannot bind animation: track % duplicates target bone '%' (index %).", index, track.bone.text, bone);
+
+        if used[joint] {
+            Basic.assert(false, "Cannot bind animation: track % duplicates target joint '%' (index %).", index, track.joint.text, joint);
             return false;
         }
-        used[bone] = true;
-        result.bone_indices[index] = bone;
+
+        used[joint] = true;
+        result.track_index_to_joint_index[index] = joint;
     }
 
     binding.* = result;
@@ -161,7 +166,7 @@ sample_animation :: (binding: *Binding, time: float, result: *Pose) {
 
     result.* = binding.skeleton.default_pose;
     for track, index: clip.tracks {
-        transform := *result.bone_transforms[binding.bone_indices[index]];
+        transform := *result.joint_transforms[binding.track_index_to_joint_index[index]];
 
         if track.positions.count > 0 {
             a, b := channel_indices(track.positions.count, first, second);

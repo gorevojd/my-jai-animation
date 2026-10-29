@@ -7,25 +7,24 @@
 
 // Intern names while loading; Name storage is shared and must not be freed by skeleton owners.
 
-INVALID_BONE_INDEX :: 255;
-MAX_BONE_COUNT :: 128;
-VertexBoneIndices :: [4]u8;
+INVALID_JOINT_INDEX :: 255;
+MAX_JOINT_COUNT :: 128;
+JointPaletteIndices :: [4]u8;
 
 AnimatedGeometryInterface :: struct {
     vertices: [..]Vec3;
     indices: [..]u32;
-    bones: [..]VertexBoneIndices;
+    joint_palette_indices: [..]JointPaletteIndices;
     weights: [..]Vec4;
 }
 
-Bone :: struct {
+Joint :: struct {
     local: Transform;
-    inverse_bind: Transform;
 
     name: Name;
     id: Name;
 
-    parent_index: u8 = INVALID_BONE_INDEX;
+    parent_index: u8 = INVALID_JOINT_INDEX;
 }
 
 Socket :: struct {
@@ -37,63 +36,63 @@ Socket :: struct {
 }
 
 Pose :: struct {
-    bone_transforms: [MAX_BONE_COUNT] Transform;
-    num_bones: u32;
+    joint_transforms: [MAX_JOINT_COUNT] Transform;
+    num_joints: u32;
 }
 
 Skeleton :: struct {
-    // Loaders must store parents before children and remap all bone references accordingly.
-    // Each parent_index is INVALID_BONE_INDEX or strictly less than the child's index.
-    bones: [MAX_BONE_COUNT] Bone;
-    sockets: [MAX_BONE_COUNT] Socket;
+    // Loaders must store parents before children and remap all joint references accordingly.
+    // Each parent_index is INVALID_JOINT_INDEX or strictly less than the child's index.
+    joints: [MAX_JOINT_COUNT] Joint;
+    sockets: [MAX_JOINT_COUNT] Socket;
 
-    num_bones: u32;
+    num_joints: u32;
     num_sockets: u32;
 
     default_pose: Pose;
 
-    root_bone_index: u8 = INVALID_BONE_INDEX;
-    bone_mapping: Name_Table(u8);
+    root_joint_index: u8 = INVALID_JOINT_INDEX;
+    joint_mapping: Name_Table(u8);
 }
 
-set_bone_transform :: (pose: *Pose, bone_index: u32, transform: Transform) #no_abc {
-    Basic.assert(bone_index < pose.num_bones, "Invalid bone_index=%, when num bones is: %!", bone_index, pose.num_bones);
-    pose.bone_transforms[bone_index] = transform;
+set_joint_transform :: (pose: *Pose, joint_index: u32, transform: Transform) #no_abc {
+    Basic.assert(joint_index < pose.num_joints, "Invalid joint_index=%, when num joints is: %!", joint_index, pose.num_joints);
+    pose.joint_transforms[joint_index] = transform;
 }
 
-get_bone_transform :: (pose: Pose, bone_index: u32) -> Transform #no_abc {
-    Basic.assert(bone_index < pose.num_bones, "Invalid bone_index=%, when num bones is: %!", bone_index, pose.num_bones);
-    return pose.bone_transforms[bone_index];
+get_joint_transform :: (pose: Pose, joint_index: u32) -> Transform #no_abc {
+    Basic.assert(joint_index < pose.num_joints, "Invalid joint_index=%, when num joints is: %!", joint_index, pose.num_joints);
+    return pose.joint_transforms[joint_index];
 }
 
-set_bone_position :: (pose: *Pose, bone_index: u32, position: Vec3) #no_abc {
-    Basic.assert(bone_index < pose.num_bones, "Invalid bone_index=%, when num bones is: %!", bone_index, pose.num_bones);
-    pose.bone_transforms[bone_index].position = position;
+set_joint_position :: (pose: *Pose, joint_index: u32, position: Vec3) #no_abc {
+    Basic.assert(joint_index < pose.num_joints, "Invalid joint_index=%, when num joints is: %!", joint_index, pose.num_joints);
+    pose.joint_transforms[joint_index].position = position;
 }
 
-get_bone_position :: (pose: Pose, bone_index: u32) -> Vec3 #no_abc {
-    Basic.assert(bone_index < pose.num_bones, "Invalid bone_index=%, when num bones is: %!", bone_index, pose.num_bones);
-    return pose.bone_transforms[bone_index].position;
+get_joint_position :: (pose: Pose, joint_index: u32) -> Vec3 #no_abc {
+    Basic.assert(joint_index < pose.num_joints, "Invalid joint_index=%, when num joints is: %!", joint_index, pose.num_joints);
+    return pose.joint_transforms[joint_index].position;
 }
 
-set_bone_rotation :: (pose: *Pose, bone_index: u32, rotation: Quat) #no_abc {
-    Basic.assert(bone_index < pose.num_bones, "Invalid bone_index=%, when num bones is: %!", bone_index, pose.num_bones);
-    pose.bone_transforms[bone_index].rotation = rotation;
+set_joint_rotation :: (pose: *Pose, joint_index: u32, rotation: Quat) #no_abc {
+    Basic.assert(joint_index < pose.num_joints, "Invalid joint_index=%, when num joints is: %!", joint_index, pose.num_joints);
+    pose.joint_transforms[joint_index].rotation = rotation;
 }
 
-get_bone_rotation :: (pose: Pose, bone_index: u32) -> Quat #no_abc {
-    Basic.assert(bone_index < pose.num_bones, "Invalid bone_index=%, when num bones is: %!", bone_index, pose.num_bones);
-    return pose.bone_transforms[bone_index].rotation;
+get_joint_rotation :: (pose: Pose, joint_index: u32) -> Quat #no_abc {
+    Basic.assert(joint_index < pose.num_joints, "Invalid joint_index=%, when num joints is: %!", joint_index, pose.num_joints);
+    return pose.joint_transforms[joint_index].rotation;
 }
 
-set_bone_scale :: (pose: *Pose, bone_index: u32, scale: float) #no_abc {
-    Basic.assert(bone_index < pose.num_bones, "Invalid bone_index=%, when num bones is: %!", bone_index, pose.num_bones);
-    pose.bone_transforms[bone_index].scale = scale;
+set_joint_scale :: (pose: *Pose, joint_index: u32, scale: float) #no_abc {
+    Basic.assert(joint_index < pose.num_joints, "Invalid joint_index=%, when num joints is: %!", joint_index, pose.num_joints);
+    pose.joint_transforms[joint_index].scale = scale;
 }
 
-get_bone_scale :: (pose: Pose, bone_index: u32) -> float #no_abc {
-    Basic.assert(bone_index < pose.num_bones, "Invalid bone_index=%, when num bones is: %!", bone_index, pose.num_bones);
-    return pose.bone_transforms[bone_index].scale;
+get_joint_scale :: (pose: Pose, joint_index: u32) -> float #no_abc {
+    Basic.assert(joint_index < pose.num_joints, "Invalid joint_index=%, when num joints is: %!", joint_index, pose.num_joints);
+    return pose.joint_transforms[joint_index].scale;
 }
 
 // Applies the delta to the base pose; rotation composes as delta * base.
@@ -104,11 +103,11 @@ add_poses :: (base: Pose, delta: Pose) -> Pose {
 }
 
 add_poses_internal :: (base: *Pose, delta: Pose) #no_abc {
-    Basic.assert(base.num_bones == delta.num_bones && base.num_bones <= MAX_BONE_COUNT);
+    Basic.assert(base.num_joints == delta.num_joints && base.num_joints <= MAX_JOINT_COUNT);
 
-    for i: 0..cast(int)base.num_bones - 1 {
-        base_transform := *base.bone_transforms[i];
-        delta_transform := delta.bone_transforms[i];
+    for i: 0..cast(int)base.num_joints - 1 {
+        base_transform := *base.joint_transforms[i];
+        delta_transform := delta.joint_transforms[i];
         base_transform.position += delta_transform.position;
         base_transform.rotation = normalize_safe(delta_transform.rotation * base_transform.rotation);
         base_transform.scale *= delta_transform.scale;
@@ -124,13 +123,13 @@ sub_poses :: (a: Pose, b: Pose) -> Pose {
 // Produces a left delta: delta = pose * inverse(other).
 // add_poses(other, delta) reconstructs the input pose.
 sub_poses_internal :: (pose: *Pose, other: Pose) {
-    Basic.assert(pose.num_bones == other.num_bones && pose.num_bones <= MAX_BONE_COUNT);
+    Basic.assert(pose.num_joints == other.num_joints && pose.num_joints <= MAX_JOINT_COUNT);
 
-    for i: 0..cast(int)pose.num_bones - 1 {
-        a := *pose.bone_transforms[i];
-        b := other.bone_transforms[i];
+    for i: 0..cast(int)pose.num_joints - 1 {
+        a := *pose.joint_transforms[i];
+        b := other.joint_transforms[i];
 
-        Basic.assert(b.scale != 0.0, "Cannot subtract a pose with zero scale at bone %!", i);
+        Basic.assert(b.scale != 0.0, "Cannot subtract a pose with zero scale at joint %!", i);
 
         a.position -= b.position;
         a.rotation = normalize_safe(normalize_safe(a.rotation) * conjugate(normalize_safe(b.rotation)));
@@ -146,7 +145,7 @@ lerp_poses :: (a: Pose, b: Pose, t: float) -> Pose #no_abc {
 
 // The blend parameter is unclamped, matching the scalar/vector lerp helpers.
 lerp_poses_internal :: (pose: *Pose, other: Pose, t: float) #no_abc {
-    Basic.assert(pose.num_bones == other.num_bones && pose.num_bones <= MAX_BONE_COUNT);
+    Basic.assert(pose.num_joints == other.num_joints && pose.num_joints <= MAX_JOINT_COUNT);
     Basic.assert(is_finite(t));
 
     if t == 0.0 {
@@ -157,9 +156,9 @@ lerp_poses_internal :: (pose: *Pose, other: Pose, t: float) #no_abc {
         return;
     }
 
-    for i: 0..cast(int)pose.num_bones - 1 {
-        a := *pose.bone_transforms[i];
-        b := other.bone_transforms[i];
+    for i: 0..cast(int)pose.num_joints - 1 {
+        a := *pose.joint_transforms[i];
+        b := other.joint_transforms[i];
         a.position = lerp(a.position, b.position, t);
         a.rotation = slerp_unclamped(a.rotation, b.rotation, t);
         a.scale = lerp(a.scale, b.scale, t);
@@ -173,7 +172,7 @@ lerp_barycentric_poses :: (p0: Pose, p1: Pose, p2: Pose, t0: float, t1: float, t
 }
 
 lerp_barycentric_poses_internal :: (p0: *Pose, p1: Pose, p2: Pose, t0: float, t1: float, t2: float) #no_abc {
-    Basic.assert(p0.num_bones == p1.num_bones && p0.num_bones == p2.num_bones && p0.num_bones <= MAX_BONE_COUNT);
+    Basic.assert(p0.num_joints == p1.num_joints && p0.num_joints == p2.num_joints && p0.num_joints <= MAX_JOINT_COUNT);
     Basic.assert(is_finite(t0) && is_finite(t1) && is_finite(t2));
     Basic.assert(t0 >= 0.0 && t1 >= 0.0 && t2 >= 0.0);
 
@@ -216,10 +215,10 @@ lerp_barycentric_poses_internal :: (p0: *Pose, p1: Pose, p2: Pose, t0: float, t1
         return;
     }
 
-    for i: 0..cast(int)p0.num_bones - 1 {
-        a := *p0.bone_transforms[i];
-        b := p1.bone_transforms[i];
-        c := p2.bone_transforms[i];
+    for i: 0..cast(int)p0.num_joints - 1 {
+        a := *p0.joint_transforms[i];
+        b := p1.joint_transforms[i];
+        c := p2.joint_transforms[i];
         q0 := normalize_safe(a.rotation);
         q1 := normalize_safe(b.rotation);
         q2 := normalize_safe(c.rotation);
@@ -246,63 +245,6 @@ lerp_barycentric_poses_internal :: (p0: *Pose, p1: Pose, p2: Pose, t0: float, t1
 }
 
 move_poses :: (dst: *Pose, src: Pose) #no_abc {
-    Basic.assert(src.num_bones <= MAX_BONE_COUNT);
+    Basic.assert(src.num_joints <= MAX_JOINT_COUNT);
     dst.* = src;
-}
-
-// Shared CPU/GPU skinning transforms, indexed directly by skeleton bone index.
-build_skin_transforms :: (skeleton: Skeleton, pose: Pose, transforms: []Transform) {
-    Basic.assert(pose.num_bones == skeleton.num_bones && skeleton.num_bones <= MAX_BONE_COUNT);
-    Basic.assert(transforms.count == skeleton.num_bones);
-
-    global_transforms: [MAX_BONE_COUNT] Transform;
-
-    for i: 0..cast(int)skeleton.num_bones - 1 {
-        parent_index := skeleton.bones[i].parent_index;
-        global := pose.bone_transforms[i];
-        if parent_index != INVALID_BONE_INDEX {
-            Basic.assert(parent_index < i, "Parent bone % must precede child bone %!", parent_index, i);
-            global = multiply(global_transforms[parent_index], global);
-        }
-
-        // Prevent quaternion length drift across deep parent chains.
-        global.rotation = normalize_safe(global.rotation);
-        global_transforms[i] = global;
-        skin := multiply(global, skeleton.bones[i].inverse_bind);
-        skin.rotation = normalize_safe(skin.rotation);
-        transforms[i] = skin;
-    }
-}
-
-apply_pose_to_mesh :: (dst: *$T/interface AnimatedGeometryInterface, src: T, skeleton: Skeleton, pose: Pose) {
-    Basic.assert(pose.num_bones == skeleton.num_bones && skeleton.num_bones <= MAX_BONE_COUNT);
-    Basic.assert(dst.vertices.count == src.vertices.count);
-    Basic.assert(src.bones.count == src.vertices.count && src.weights.count == src.vertices.count);
-
-    skin_transforms: [MAX_BONE_COUNT] Transform;
-    transforms: []Transform = .{skeleton.num_bones, skin_transforms.data};
-    build_skin_transforms(skeleton, pose, transforms);
-
-    for source_position, i: src.vertices {
-        weights := src.weights[i];
-        position: Vec3;
-        total_weight := 0.0;
-        for influence: 0..3 {
-            weight := weights.e[influence];
-            if weight == 0.0 {
-                continue;
-            }
-            bone_index := src.bones[i][influence];
-            Basic.assert(bone_index < skeleton.num_bones, "Invalid skin bone index % at vertex %!", bone_index, i);
-            position += transform_point(skin_transforms[bone_index], source_position) * weight;
-            total_weight += weight;
-        }
-
-        if total_weight == 0.0 {
-            dst.vertices[i] = source_position;
-        }
-        else {
-            dst.vertices[i] = position;
-        }
-    }
 }
