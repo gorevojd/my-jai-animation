@@ -4,7 +4,7 @@
 #scope_module
 Basic :: #import "Basic";
 Math :: #import "MyMath";
-Names :: #import "MyBasic";
+#import "MyBasic";
 using Math;
 
 #scope_export

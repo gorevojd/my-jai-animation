@@ -22,8 +22,8 @@ Bone :: struct {
     local: Transform;
     inverse_bind: Transform;
 
-    name: Names.Name;
-    id: Names.Name;
+    name: Name;
+    id: Name;
 
     parent_index: u8 = INVALID_BONE_INDEX;
 }
@@ -32,8 +32,8 @@ Socket :: struct {
     position: Vec3;
     rotation: Quat;
 
-    name: Names.Name;
-    joint: Names.Name;
+    name: Name;
+    joint: Name;
 }
 
 Pose :: struct {
@@ -53,7 +53,7 @@ Skeleton :: struct {
     default_pose: Pose;
 
     root_bone_index: u8 = INVALID_BONE_INDEX;
-    bone_mapping: Names.Name_Table(u8);
+    bone_mapping: Name_Table(u8);
 }
 
 set_bone_transform :: (pose: *Pose, bone_index: u32, transform: Transform) #no_abc {
