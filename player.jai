@@ -29,7 +29,7 @@ Player :: struct {
 }
 
 // Always restarts; reverse playback begins at the final sample. Use unpause to resume.
-start_playing :: (player: *Player, clip: *Clip) {
+play :: (player: *Player, clip: *Clip) {
     Basic.assert(Math.is_finite(player.speed));
     player.time = ifx player.speed < 0.0 then clip_duration(clip) else 0.0;
     player.state = .Playing;
@@ -37,7 +37,7 @@ start_playing :: (player: *Player, clip: *Clip) {
 }
 
 // Explicit stop resets to the first sample. Natural completion retains the reached endpoint.
-stop_playing :: (player: *Player) {
+stop :: (player: *Player) {
     player.state = .Stopped;
     if player.time != 0.0 {
         player.time = 0.0;
@@ -66,7 +66,7 @@ get_player_pose :: (player: *Player, binding: *Binding) -> *Pose {
 
     // Also catch direct writes to the public time field and switching source objects.
     if (player.dirty ||
-        !equal(player.cached_time != player.time) ||
+        !equal(player.cached_time, player.time) ||
         player.cached_binding != binding ||
         player.cached_clip != binding.clip ||
         player.cached_skeleton != binding.skeleton)
