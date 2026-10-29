@@ -180,10 +180,12 @@ lerp_barycentric_poses_internal :: (p0: *Pose, p1: Pose, p2: Pose, t0: float, t1
     if t1 == 0.0 && t2 == 0.0 {
         return;
     }
+
     if t0 == 0.0 && t2 == 0.0 {
         move_poses(p0, p1);
         return;
     }
+    
     if t0 == 0.0 && t1 == 0.0 {
         move_poses(p0, p2);
         return;
@@ -203,10 +205,12 @@ lerp_barycentric_poses_internal :: (p0: *Pose, p1: Pose, p2: Pose, t0: float, t1
         lerp_poses_internal(p0, p2, w2);
         return;
     }
+
     if t1 == 0.0 {
         lerp_poses_internal(p0, p2, w2);
         return;
     }
+
     if t2 == 0.0 {
         lerp_poses_internal(p0, p1, w1);
         return;
