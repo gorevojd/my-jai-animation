@@ -1,10 +1,10 @@
 // Reusable skeletal animation: named joints/sockets, pose blending and skinning transforms.
-// Geometry and math come from MyMath; interned identifiers come from MyBasic.
+// Geometry and math come from MyMath; interned identifiers come from MyBasic/MyName.
 // Asset loading, materials and game animation policy remain outside this module.
 #scope_module
 Basic :: #import "Basic";
 Math :: #import "MyMath";
-#import "MyBasic";
+#import "MyBasic/MyName";
 using Math;
 
 #scope_export
